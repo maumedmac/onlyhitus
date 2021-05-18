@@ -10,7 +10,7 @@ import org.greenrobot.eventbus.EventBus;
 
 public class RadioManager {
 
-    private static RadioManager instance = null;
+    private static RadioManager instance ;
 
     private static RadioService service;
 
@@ -31,18 +31,13 @@ public class RadioManager {
         return instance;
     }
 
-    public static RadioService getService(){
-        return service;
+    public static String getStatus(){
+        return service.getStatus();
     }
 
     public void playOrPause(String streamUrl){
 
         service.playOrPause(streamUrl);
-    }
-
-    public boolean isPlaying() {
-
-        return service.isPlaying();
     }
 
     public void bind() {

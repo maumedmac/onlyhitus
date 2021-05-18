@@ -14,12 +14,12 @@ import com.squareup.picasso.Picasso;
 import java.util.List;
 
 public class StationAdapter extends BaseAdapter {
-    private Context mContext;
-    private List<StationInstancer> mList;
+    private final Context mContext;
+    private final List<StationInstancer> mList;
 
-    public StationAdapter(Context context, List<StationInstancer> list){
-        mContext=context;
-        mList=list;
+    public StationAdapter(Context context, List<StationInstancer> list) {
+        mContext = context;
+        mList = list;
     }
 
     @Override
@@ -40,24 +40,24 @@ public class StationAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
-        if(convertView==null){
-            holder=new ViewHolder();
+        if (convertView == null) {
+            holder = new ViewHolder();
             convertView = LayoutInflater.from(mContext).inflate(R.layout.list_radios, parent, false);
-            holder.textView= convertView.findViewById(R.id.textView);
-            holder.imageView= convertView.findViewById(R.id.imageView);
+            holder.textView = convertView.findViewById(R.id.textView);
+            holder.imageView = convertView.findViewById(R.id.imageView);
             convertView.setTag(holder);
-        }else{
+        } else {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        //set text and url
+        //set text and image
         holder.textView.setText(mList.get(position).getName());
         Picasso.get().load(mList.get(position).getImage()).into(holder.imageView);
 
         return convertView;
     }
 
-    class ViewHolder{
+    static class ViewHolder {
         TextView textView;
         ImageView imageView;
 

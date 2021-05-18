@@ -1,12 +1,14 @@
 package com.lazarowicz.onlyhitus;
 
 import android.os.Bundle;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import android.text.TextUtils;
+
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,6 +17,7 @@ import com.lazarowicz.onlyhitus.player.PlaybackStatus;
 import com.lazarowicz.onlyhitus.player.RadioManager;
 import com.lazarowicz.onlyhitus.util.StationInstancer;
 import com.lazarowicz.onlyhitus.util.StationAdapter;
+import com.squareup.picasso.Picasso;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -29,13 +32,26 @@ import butterknife.OnItemClick;
 
 public class MainActivity extends AppCompatActivity {
 
+    private long backPressedTime = 0;
+
     @BindView(R.id.toolbar)
     Toolbar toolbar;
 
+    @BindView(R.id.playTrigger)
+    ImageButton trigger;
 
     @BindView(R.id.listview)
     ListView listView;
-    
+
+    @BindView(R.id.stationName)
+    TextView stationName;
+
+    @BindView(R.id.stationLogo)
+    ImageView stationLogo;
+
+    @BindView(R.id.sub_player)
+    View subPlayer;
+
     RadioManager radioManager;
 
     String streamURL;
@@ -55,21 +71,38 @@ public class MainActivity extends AppCompatActivity {
 
         ArrayList<StationInstancer> list = loadStations();
 
-        StationAdapter adapter =new StationAdapter(this,list);
-       listView.setAdapter(adapter);
-       listView.setAdapter(new StationAdapter(this, list));
+        StationAdapter adapter = new StationAdapter(this, list);
+        listView.setAdapter(adapter);
+        listView.setAdapter(new StationAdapter(this, list));
     }
 
     @NotNull
     private ArrayList<StationInstancer> loadStations() {
-        ArrayList<StationInstancer> list=new ArrayList<>();
+        ArrayList<StationInstancer> list = new ArrayList<>();
 
-        StationInstancer onlyHitStationInstancer =new StationInstancer();
+        StationInstancer onlyHitStationInstancer = new StationInstancer();
         onlyHitStationInstancer.setName("OnlyHit");
-        onlyHitStationInstancer.setUrl("https://api.onlyhit.us/play");
+        onlyHitStationInstancer.setUrl("https://api.onlyhit.us");
         onlyHitStationInstancer.setImage(R.drawable.onlyhit);
         list.add(onlyHitStationInstancer);
 
+        StationInstancer onlyHitGoldStationInstancer = new StationInstancer();
+        onlyHitGoldStationInstancer.setName("OnlyHit Gold");
+        onlyHitGoldStationInstancer.setUrl("https://gold.onlyhit.us");
+        onlyHitGoldStationInstancer.setImage(R.drawable.onlyhit_gold);
+        list.add(onlyHitGoldStationInstancer);
+
+        StationInstancer onlyHitJapanStationInstancer = new StationInstancer();
+        onlyHitJapanStationInstancer.setName("OnlyHit Japan");
+        onlyHitJapanStationInstancer.setUrl("https://j.onlyhit.us");
+        onlyHitJapanStationInstancer.setImage(R.drawable.onlyhit_japan);
+        list.add(onlyHitJapanStationInstancer);
+
+        StationInstancer onlyHitKPopStationInstancer = new StationInstancer();
+        onlyHitKPopStationInstancer.setName("OnlyHit K-Pop");
+        onlyHitKPopStationInstancer.setUrl("https://kpop.onlyhit.us");
+        onlyHitKPopStationInstancer.setImage(R.drawable.onlyhitkpop);
+        list.add(onlyHitKPopStationInstancer);
         return list;
     }
 
@@ -106,48 +139,52 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-
-        finish();
+        long t = System.currentTimeMillis();
+        if (t - backPressedTime > 2000) {    // 2 secs
+            backPressedTime = t;
+            Toast.makeText(this, "Press back again to leave", Toast.LENGTH_SHORT).show();
+        } else finish();
     }
 
     @Subscribe
-    public void onEvent(String status){
+    public void onEvent(String status) {
 
-        switch (status){
-
+        switch (status) {
             case PlaybackStatus.LOADING:
-
-                // loading
-
                 break;
-
             case PlaybackStatus.ERROR:
-
                 Toast.makeText(this, R.string.no_stream, Toast.LENGTH_SHORT).show();
-
                 break;
-
+            case PlaybackStatus.PLAYING:
+                trigger.setImageResource(R.drawable.ic_pause_black);
+                break;
+            case PlaybackStatus.PAUSED:
+            case PlaybackStatus.IDLE:
+                trigger.setImageResource(R.drawable.ic_play_arrow_black);
+                break;
         }
-
-
-
     }
 
-
+    @OnClick(R.id.playTrigger)
+    public void onClicked() {
+        radioManager.playOrPause(streamURL);
+    }
 
     @OnItemClick(R.id.listview)
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id){
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
         StationInstancer shoutcast = (StationInstancer) parent.getItemAtPosition(position);
-        if(shoutcast == null){
-
+        if (shoutcast == null || stationName.getText() == shoutcast.getName() ||
+                RadioManager.getStatus().equals(PlaybackStatus.LOADING)) {
             return;
-
         }
 
+        stationName.setText(shoutcast.getName());
+        Picasso.get().load(shoutcast.getImage()).into(stationLogo);
 
+        subPlayer.setVisibility(View.VISIBLE);
 
-        streamURL = shoutcast.getUrl();
+        streamURL = shoutcast.getUrl() + "/play";
 
 
         radioManager.playOrPause(streamURL);

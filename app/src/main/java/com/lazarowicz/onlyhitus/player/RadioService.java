@@ -14,18 +14,15 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
 import com.lazarowicz.onlyhitus.R;
@@ -36,21 +33,28 @@ import org.jetbrains.annotations.Nullable;
 
 public class RadioService extends Service implements Player.EventListener, AudioManager.OnAudioFocusChangeListener {
 
-    public static final String ACTION_PLAY = "com.mcakir.radio.player.ACTION_PLAY";
-    public static final String ACTION_PAUSE = "com.mcakir.radio.player.ACTION_PAUSE";
-    public static final String ACTION_STOP = "com.mcakir.radio.player.ACTION_STOP";
+    public static final String ACTION_PLAY = "com.lazarowicz.onlyhitus.ACTION_PLAY";
+    public static final String ACTION_PAUSE = "com.lazarowicz.onlyhitus.ACTION_PAUSE";
+    public static final String ACTION_STOP = "com.lazarowicz.onlyhitus.ACTION_STOP";
 
     private final IBinder iBinder = new LocalBinder();
 
     private SimpleExoPlayer exoPlayer;
-
+    private MediaSessionCompat mediaSession;
+    private MediaControllerCompat.TransportControls transportControls;
 
     private boolean onGoingCall = false;
+    private TelephonyManager telephonyManager;
 
+    private WifiManager.WifiLock wifiLock;
+
+    private AudioManager audioManager;
+
+    private MediaNotificationManager notificationManager;
 
     private String status;
 
-    private String streamUrl;
+    private String existingURL;
 
     public class LocalBinder extends Binder {
         public RadioService getService() {
@@ -58,9 +62,37 @@ public class RadioService extends Service implements Player.EventListener, Audio
         }
     }
 
+    private BroadcastReceiver becomingNoisyReceiver = new BroadcastReceiver() {
 
+        @Override
+        public void onReceive(Context context, Intent intent) {
 
+            pause();
+        }
+    };
 
+    private PhoneStateListener phoneStateListener = new PhoneStateListener() {
+
+        @Override
+        public void onCallStateChanged(int state, String incomingNumber) {
+
+            if (state == TelephonyManager.CALL_STATE_OFFHOOK
+                    || state == TelephonyManager.CALL_STATE_RINGING) {
+
+                if (!isPlaying()) return;
+
+                onGoingCall = true;
+                stop();
+
+            } else if (state == TelephonyManager.CALL_STATE_IDLE) {
+
+                if (!onGoingCall) return;
+
+                onGoingCall = false;
+                resume();
+            }
+        }
+    };
 
     private MediaSessionCompat.Callback mediasSessionCallback = new MediaSessionCompat.Callback() {
         @Override
@@ -76,7 +108,7 @@ public class RadioService extends Service implements Player.EventListener, Audio
 
             stop();
 
-
+            notificationManager.cancelNotify();
         }
 
         @Override
@@ -98,12 +130,30 @@ public class RadioService extends Service implements Player.EventListener, Audio
     public void onCreate() {
         super.onCreate();
 
-
+        String strAppName = getResources().getString(R.string.app_name);
+        String strLiveBroadcast = "shoutcast";
 
         onGoingCall = false;
 
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
+        notificationManager = new MediaNotificationManager(this);
 
+        wifiLock = ((WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE))
+                .createWifiLock(WifiManager.WIFI_MODE_FULL, "mcScPAmpLock");
+
+        mediaSession = new MediaSessionCompat(this, getClass().getSimpleName());
+        transportControls = mediaSession.getController().getTransportControls();
+        mediaSession.setActive(true);
+        mediaSession.setMetadata(new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "...")
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, strAppName)
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, strLiveBroadcast)
+                .build());
+        mediaSession.setCallback(mediasSessionCallback);
+
+        telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+        telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
 
         exoPlayer = new SimpleExoPlayer.Builder(this)
@@ -124,9 +174,27 @@ public class RadioService extends Service implements Player.EventListener, Audio
         if (TextUtils.isEmpty(action))
             return START_NOT_STICKY;
 
+        int result = audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
 
+            stop();
 
+            return START_NOT_STICKY;
+        }
 
+        if (action.equalsIgnoreCase(ACTION_PLAY)) {
+
+            transportControls.play();
+
+        } else if (action.equalsIgnoreCase(ACTION_PAUSE)) {
+
+            pause();
+
+        } else if (action.equalsIgnoreCase(ACTION_STOP)) {
+
+            transportControls.stop();
+
+        }
 
         return START_NOT_STICKY;
     }
@@ -153,7 +221,14 @@ public class RadioService extends Service implements Player.EventListener, Audio
         exoPlayer.release();
         exoPlayer.removeListener(this);
 
+        if (telephonyManager != null)
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
 
+        notificationManager.cancelNotify();
+
+        mediaSession.release();
+
+        //unregisterReceiver(becomingNoisyReceiver);
 
         super.onDestroy();
     }
@@ -181,45 +256,43 @@ public class RadioService extends Service implements Player.EventListener, Audio
     }
 
     @Override
-    public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+    public void onPlaybackStateChanged(int state) {
 
-        switch (playbackState) {
+        switch (state) {
             case Player.STATE_BUFFERING:
                 status = PlaybackStatus.LOADING;
+                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
+                //LOG
                 break;
             case Player.STATE_ENDED:
                 status = PlaybackStatus.STOPPED;
+                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
+                //LOG
                 break;
             case Player.STATE_READY:
-                status = playWhenReady ? PlaybackStatus.PLAYING : PlaybackStatus.PAUSED;
-                break;
-            default:
-                status = PlaybackStatus.IDLE;
+                if (exoPlayer.getPlayWhenReady()) {
+                    status = PlaybackStatus.PLAYING;
+                }
+                if (!exoPlayer.getPlayWhenReady()) {
+                    status = PlaybackStatus.PAUSED;
+                }
+                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
+                //LOG
                 break;
             case Player.STATE_IDLE:
+                status = PlaybackStatus.IDLE;
+                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
+                //LOG
                 break;
+
         }
 
-        if (!status.equals(PlaybackStatus.IDLE))
-
+        if (state != (Player.STATE_IDLE))
+            notificationManager.startNotify(status);
 
         EventBus.getDefault().post(status);
     }
 
-    @Override
-    public void onTimelineChanged(Timeline timeline, Object manifest, int reason) {
-
-    }
-
-    @Override
-    public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
-
-    }
-
-    @Override
-    public void onLoadingChanged(boolean isLoading) {
-
-    }
 
     @Override
     public void onPlayerError(@NotNull ExoPlaybackException error) {
@@ -227,32 +300,16 @@ public class RadioService extends Service implements Player.EventListener, Audio
         EventBus.getDefault().post(PlaybackStatus.ERROR);
     }
 
-    @Override
-    public void onRepeatModeChanged(int repeatMode) {
-
-    }
-
-    @Override
-    public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
-
-    }
-
-    @Override
-    public void onPositionDiscontinuity(int reason) {
-
-    }
-
-    @Override
-    public void onPlaybackParametersChanged(@NotNull PlaybackParameters playbackParameters) {
-
-    }
-
 
     public void play(String streamUrl) {
 
-        this.streamUrl = streamUrl;
+        this.existingURL = streamUrl;
 
+        if (wifiLock != null && !wifiLock.isHeld()) {
 
+            wifiLock.acquire();
+
+        }
 
         // Create a data source factory.
         DataSource.Factory dataSourceFactory = new DefaultHttpDataSourceFactory();
@@ -270,33 +327,34 @@ public class RadioService extends Service implements Player.EventListener, Audio
 
     public void resume() {
 
-        if (streamUrl != null)
-            play(streamUrl);
+        if (existingURL != null)
+            play(existingURL);
     }
 
     public void pause() {
-
         exoPlayer.setPlayWhenReady(false);
+        status = PlaybackStatus.PAUSED;
+        EventBus.getDefault().post(status);
 
-
-
+        audioManager.abandonAudioFocus(this);
+        wifiLockRelease();
     }
 
     public void stop() {
 
         exoPlayer.stop();
 
-
-
+        audioManager.abandonAudioFocus(this);
+        wifiLockRelease();
     }
 
-    public void playOrPause(String url) {
+    public void playOrPause(String streamUrl) {
 
-        if (streamUrl != null && streamUrl.equals(url)) {
+        if (existingURL != null && existingURL.equals(streamUrl)) {
 
             if (!isPlaying()) {
 
-                play(streamUrl);
+                play(existingURL);
 
             } else {
 
@@ -311,7 +369,7 @@ public class RadioService extends Service implements Player.EventListener, Audio
 
             }
 
-            play(url);
+            play(streamUrl);
         }
     }
 
@@ -320,13 +378,22 @@ public class RadioService extends Service implements Player.EventListener, Audio
         return status;
     }
 
+    public MediaSessionCompat getMediaSession() {
 
+        return mediaSession;
+    }
 
     public boolean isPlaying() {
 
         return this.status.equals(PlaybackStatus.PLAYING);
     }
 
+    private void wifiLockRelease() {
 
+        if (wifiLock != null && wifiLock.isHeld()) {
+
+            wifiLock.release();
+        }
+    }
 
 }

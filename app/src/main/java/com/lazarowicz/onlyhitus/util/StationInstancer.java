@@ -28,4 +28,8 @@ public class StationInstancer {
     public void setUrl(String url) {
         this.url = url;
     }
+
+    public String getPlaying() {
+        return url + "/currentsong";
+    }
 }
