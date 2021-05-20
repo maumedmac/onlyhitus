@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 
+import com.lazarowicz.onlyhitus.util.StationInstancer;
+
 import org.greenrobot.eventbus.EventBus;
 
 public class RadioManager {
@@ -14,13 +16,11 @@ public class RadioManager {
 
     private static RadioService service;
 
-    private Context context;
-
-    private boolean serviceBound;
+    private final Context context;
+    private StationInstancer shoutcast;
 
     private RadioManager(Context context) {
         this.context = context;
-        serviceBound = false;
     }
 
     public static RadioManager with(Context context) {
@@ -35,9 +35,13 @@ public class RadioManager {
         return service.getStatus();
     }
 
-    public void playOrPause(String streamUrl){
+    public void passShoutcast(StationInstancer shoutcast){
+        this.shoutcast=shoutcast;
+    }
 
-        service.playOrPause(streamUrl);
+    public void playOrPause(){
+
+        service.playOrPause(this.shoutcast);
     }
 
     public void bind() {
@@ -54,19 +58,17 @@ public class RadioManager {
         context.unbindService(serviceConnection);
     }
 
-    private ServiceConnection serviceConnection = new ServiceConnection() {
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName arg0, IBinder binder) {
 
             service = ((RadioService.LocalBinder) binder).getService();
-            serviceBound = true;
         }
 
         @Override
         public void onServiceDisconnected(ComponentName arg0) {
 
-            serviceBound = false;
         }
     };
 

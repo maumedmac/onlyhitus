@@ -1,10 +1,7 @@
 package com.lazarowicz.onlyhitus;
 
 import android.os.Bundle;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageButton;
@@ -13,10 +10,13 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
 import com.lazarowicz.onlyhitus.player.PlaybackStatus;
 import com.lazarowicz.onlyhitus.player.RadioManager;
-import com.lazarowicz.onlyhitus.util.StationInstancer;
 import com.lazarowicz.onlyhitus.util.StationAdapter;
+import com.lazarowicz.onlyhitus.util.StationInstancer;
 import com.squareup.picasso.Picasso;
 
 import org.greenrobot.eventbus.EventBus;
@@ -140,10 +140,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         long t = System.currentTimeMillis();
-        if (t - backPressedTime > 2000) {    // 2 secs
+        if (t - backPressedTime > 2000) {    // 2 seconds
             backPressedTime = t;
             Toast.makeText(this, "Press back again to leave", Toast.LENGTH_SHORT).show();
-        } else finish();
+        } else {
+            finish();
+            System.exit(0);
+        }
     }
 
     @Subscribe
@@ -167,11 +170,11 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.playTrigger)
     public void onClicked() {
-        radioManager.playOrPause(streamURL);
+        radioManager.playOrPause();
     }
 
     @OnItemClick(R.id.listview)
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+    public void onItemClick(AdapterView<?> parent, View view, int position) {
 
         StationInstancer shoutcast = (StationInstancer) parent.getItemAtPosition(position);
         if (shoutcast == null || stationName.getText() == shoutcast.getName() ||
@@ -184,9 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
         subPlayer.setVisibility(View.VISIBLE);
 
-        streamURL = shoutcast.getUrl() + "/play";
-
-
-        radioManager.playOrPause(streamURL);
+        radioManager.passShoutcast(shoutcast);
+        radioManager.playOrPause();
     }
 }

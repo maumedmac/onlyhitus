@@ -4,40 +4,51 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.StrictMode;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import android.widget.Toast;
+import android.util.Log;
 
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.metadata.MetadataOutput;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
-import com.lazarowicz.onlyhitus.R;
+import com.lazarowicz.onlyhitus.util.StationInstancer;
 
 import org.greenrobot.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class RadioService extends Service implements Player.EventListener, AudioManager.OnAudioFocusChangeListener {
+import java.io.IOException;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+
+public class RadioService extends Service implements  Player.Listener, AudioManager.OnAudioFocusChangeListener {
 
     public static final String ACTION_PLAY = "com.lazarowicz.onlyhitus.ACTION_PLAY";
     public static final String ACTION_PAUSE = "com.lazarowicz.onlyhitus.ACTION_PAUSE";
     public static final String ACTION_STOP = "com.lazarowicz.onlyhitus.ACTION_STOP";
 
     private final IBinder iBinder = new LocalBinder();
+    public StationInstancer Shoutcast;
 
     private SimpleExoPlayer exoPlayer;
     private MediaSessionCompat mediaSession;
@@ -53,8 +64,12 @@ public class RadioService extends Service implements Player.EventListener, Audio
     private MediaNotificationManager notificationManager;
 
     private String status;
-
     private String existingURL;
+    public String currentSong;
+
+    public String getCurrentSong() {
+        return currentSong;
+    }
 
     public class LocalBinder extends Binder {
         public RadioService getService() {
@@ -62,16 +77,15 @@ public class RadioService extends Service implements Player.EventListener, Audio
         }
     }
 
-    private BroadcastReceiver becomingNoisyReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver becomingNoisyReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-
             pause();
         }
     };
 
-    private PhoneStateListener phoneStateListener = new PhoneStateListener() {
+    private final PhoneStateListener phoneStateListener = new PhoneStateListener() {
 
         @Override
         public void onCallStateChanged(int state, String incomingNumber) {
@@ -94,7 +108,7 @@ public class RadioService extends Service implements Player.EventListener, Audio
         }
     };
 
-    private MediaSessionCompat.Callback mediasSessionCallback = new MediaSessionCompat.Callback() {
+    private final MediaSessionCompat.Callback mediasSessionCallback = new MediaSessionCompat.Callback() {
         @Override
         public void onPause() {
             super.onPause();
@@ -129,9 +143,9 @@ public class RadioService extends Service implements Player.EventListener, Audio
     @Override
     public void onCreate() {
         super.onCreate();
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 
-        String strAppName = getResources().getString(R.string.app_name);
-        String strLiveBroadcast = "shoutcast";
+        StrictMode.setThreadPolicy(policy);
 
         onGoingCall = false;
 
@@ -145,25 +159,42 @@ public class RadioService extends Service implements Player.EventListener, Audio
         mediaSession = new MediaSessionCompat(this, getClass().getSimpleName());
         transportControls = mediaSession.getController().getTransportControls();
         mediaSession.setActive(true);
-        mediaSession.setMetadata(new MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "...")
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, strAppName)
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, strLiveBroadcast)
-                .build());
+        mediaSession.setMetadata(new MediaMetadataCompat.Builder().build());
         mediaSession.setCallback(mediasSessionCallback);
 
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(this);
 
-        exoPlayer = new SimpleExoPlayer.Builder(this)
-                .setTrackSelector(trackSelector)
-                .build();
+        exoPlayer = new SimpleExoPlayer.Builder(this).setTrackSelector(trackSelector).build();
         exoPlayer.addListener(this);
-
-//        registerReceiver(becomingNoisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
-
+        registerReceiver(becomingNoisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+        exoPlayer.addMetadataOutput(getSongTime());
         status = PlaybackStatus.IDLE;
+    }
+
+    private MetadataOutput getSongTime() {
+        return metadata -> {
+            final int length = metadata.length();
+            if (length > 0) {
+                try {
+                    getSong();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+    }
+
+    void getSong() throws IOException {
+        final OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(existingURL.split("play")[0] + "currentsong").build();
+        try (Response response = client.newCall(request).execute()) {
+            assert response.body() != null;
+            currentSong = response.body().string();
+            Log.d("getSong", currentSong);
+            notificationManager.startNotify(status);
+        }
     }
 
     @Override
@@ -178,23 +209,12 @@ public class RadioService extends Service implements Player.EventListener, Audio
         if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
 
             stop();
-
             return START_NOT_STICKY;
         }
 
-        if (action.equalsIgnoreCase(ACTION_PLAY)) {
-
-            transportControls.play();
-
-        } else if (action.equalsIgnoreCase(ACTION_PAUSE)) {
-
-            pause();
-
-        } else if (action.equalsIgnoreCase(ACTION_STOP)) {
-
-            transportControls.stop();
-
-        }
+        if (action.equalsIgnoreCase(ACTION_PLAY)) transportControls.play();
+        else if (action.equalsIgnoreCase(ACTION_PAUSE)) pause();
+        else if (action.equalsIgnoreCase(ACTION_STOP)) transportControls.stop();
 
         return START_NOT_STICKY;
     }
@@ -207,11 +227,6 @@ public class RadioService extends Service implements Player.EventListener, Audio
 
         return super.onUnbind(intent);
     }
-
-//    @Override
-//    public void onRebind(final Intent intent) {
-//
-//    }
 
     @Override
     public void onDestroy() {
@@ -228,7 +243,7 @@ public class RadioService extends Service implements Player.EventListener, Audio
 
         mediaSession.release();
 
-        //unregisterReceiver(becomingNoisyReceiver);
+        unregisterReceiver(becomingNoisyReceiver);
 
         super.onDestroy();
     }
@@ -261,36 +276,31 @@ public class RadioService extends Service implements Player.EventListener, Audio
         switch (state) {
             case Player.STATE_BUFFERING:
                 status = PlaybackStatus.LOADING;
-                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
-                //LOG
+                Log.d("onPlaybackStateChanged", state + " " + status);
                 break;
             case Player.STATE_ENDED:
                 status = PlaybackStatus.STOPPED;
-                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
-                //LOG
+                Log.d("onPlaybackStateChanged", state + " " + status);
                 break;
             case Player.STATE_READY:
                 if (exoPlayer.getPlayWhenReady()) {
                     status = PlaybackStatus.PLAYING;
+                    notificationManager.startNotify(status);
+
                 }
                 if (!exoPlayer.getPlayWhenReady()) {
                     status = PlaybackStatus.PAUSED;
+                    notificationManager.startNotify(status);
                 }
-                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
-                //LOG
+                Log.d("onPlaybackStateChanged", state + " " + status);
                 break;
             case Player.STATE_IDLE:
                 status = PlaybackStatus.IDLE;
-                Toast.makeText(this, Integer.toString(state) + " " +status, Toast.LENGTH_SHORT).show();
-                //LOG
+                Log.d("onPlaybackStateChanged", state + " " + status);
                 break;
-
         }
-
         if (state != (Player.STATE_IDLE))
-            notificationManager.startNotify(status);
-
-        EventBus.getDefault().post(status);
+            EventBus.getDefault().post(status);
     }
 
 
@@ -311,17 +321,11 @@ public class RadioService extends Service implements Player.EventListener, Audio
 
         }
 
-        // Create a data source factory.
         DataSource.Factory dataSourceFactory = new DefaultHttpDataSourceFactory();
-// Create a progressive media source pointing to a stream uri.
         MediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(MediaItem.fromUri(streamUrl));
-        // Set the media source to be played.
         exoPlayer.setMediaSource(mediaSource);
-// Prepare the player.
         exoPlayer.prepare();
-
-
         exoPlayer.setPlayWhenReady(true);
     }
 
@@ -348,7 +352,9 @@ public class RadioService extends Service implements Player.EventListener, Audio
         wifiLockRelease();
     }
 
-    public void playOrPause(String streamUrl) {
+    public void playOrPause(StationInstancer shoutcast) {
+        this.Shoutcast = shoutcast;
+        String streamUrl = this.Shoutcast.getUrl() + "/play";
 
         if (existingURL != null && existingURL.equals(streamUrl)) {
 
@@ -395,5 +401,4 @@ public class RadioService extends Service implements Player.EventListener, Audio
             wifiLock.release();
         }
     }
-
 }
