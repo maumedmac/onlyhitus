@@ -13,7 +13,8 @@ import com.squareup.picasso.Picasso;
 
 import java.util.List;
 
-public class StationAdapter extends BaseAdapter {
+public class
+StationAdapter extends BaseAdapter {
     private final Context mContext;
     private final List<StationInstancer> mList;
 
