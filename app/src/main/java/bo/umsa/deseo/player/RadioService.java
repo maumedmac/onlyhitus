@@ -1,4 +1,4 @@
-package com.lazarowicz.onlyhitus.player;
+package bo.umsa.deseo.player;
 
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -28,7 +28,7 @@ import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
-import com.lazarowicz.onlyhitus.util.StationInstancer;
+import bo.umsa.deseo.util.StationInstancer;
 
 import org.greenrobot.eventbus.EventBus;
 import org.jetbrains.annotations.NotNull;
@@ -43,9 +43,9 @@ import okhttp3.Response;
 
 public class RadioService extends Service implements  Player.Listener, AudioManager.OnAudioFocusChangeListener {
 
-    public static final String ACTION_PLAY = "com.lazarowicz.onlyhitus.ACTION_PLAY";
-    public static final String ACTION_PAUSE = "com.lazarowicz.onlyhitus.ACTION_PAUSE";
-    public static final String ACTION_STOP = "com.lazarowicz.onlyhitus.ACTION_STOP";
+    public static final String ACTION_PLAY = "com.lazarowicz.deseo.ACTION_PLAY";
+    public static final String ACTION_PAUSE = "com.lazarowicz.deseo.ACTION_PAUSE";
+    public static final String ACTION_STOP = "com.lazarowicz.deseo.ACTION_STOP";
 
     private final IBinder iBinder = new LocalBinder();
     public StationInstancer Shoutcast;
@@ -354,7 +354,7 @@ public class RadioService extends Service implements  Player.Listener, AudioMana
 
     public void playOrPause(StationInstancer shoutcast) {
         this.Shoutcast = shoutcast;
-        String streamUrl = this.Shoutcast.getUrl() + "/play";
+        String streamUrl = this.Shoutcast.getUrl();
 
         if (existingURL != null && existingURL.equals(streamUrl)) {
 

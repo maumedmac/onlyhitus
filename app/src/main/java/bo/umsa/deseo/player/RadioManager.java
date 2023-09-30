@@ -1,4 +1,4 @@
-package com.lazarowicz.onlyhitus.player;
+package bo.umsa.deseo.player;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 
-import com.lazarowicz.onlyhitus.util.StationInstancer;
+import bo.umsa.deseo.util.StationInstancer;
 
 import org.greenrobot.eventbus.EventBus;
 

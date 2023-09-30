@@ -1,4 +1,4 @@
-package com.lazarowicz.onlyhitus.player;
+package bo.umsa.deseo.player;
 
 public class PlaybackStatus {
 

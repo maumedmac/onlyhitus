@@ -1,4 +1,4 @@
-package com.lazarowicz.onlyhitus.util;
+package bo.umsa.deseo.util;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -8,7 +8,7 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.lazarowicz.onlyhitus.R;
+import bo.umsa.deseo.R;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;

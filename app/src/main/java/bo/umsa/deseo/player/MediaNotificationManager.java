@@ -1,4 +1,4 @@
-package com.lazarowicz.onlyhitus.player;
+package bo.umsa.deseo.player;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -11,12 +11,14 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import com.lazarowicz.onlyhitus.MainActivity;
-import com.lazarowicz.onlyhitus.R;
+import bo.umsa.deseo.R;
+
+import bo.umsa.deseo.MainActivity;
 
 public class MediaNotificationManager extends MainActivity {
 
@@ -58,8 +60,8 @@ public class MediaNotificationManager extends MainActivity {
         Intent intent = new Intent(service, MainActivity.class);
         intent.setAction(Intent.ACTION_MAIN);
         intent.addCategory(Intent.CATEGORY_APP_MUSIC);
-        PendingIntent pendingIntent = PendingIntent.getActivity(service, 0, intent, 0);
-
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(service, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         notificationManager.cancel(NOTIFICATION_ID);
 
         String PRIMARY_CHANNEL = "PRIMARY_CHANNEL_ID";
@@ -72,8 +74,8 @@ public class MediaNotificationManager extends MainActivity {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(service, PRIMARY_CHANNEL)
                 .setAutoCancel(false)
-                .setContentTitle(service.getCurrentSong().split("- ")[1])
-                .setContentText(service.getCurrentSong().split("- ")[0])
+                .setContentTitle("Radio Deseo")
+                .setContentText("Programacion")
                 .setLargeIcon(largeIcon)
                 .setContentIntent(pendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

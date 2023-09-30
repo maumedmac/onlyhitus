@@ -1,4 +1,4 @@
-package com.lazarowicz.onlyhitus.util;
+package bo.umsa.deseo.util;
 
 public class StationInstancer {
     private String text;

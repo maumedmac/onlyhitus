@@ -1,8 +1,9 @@
-package com.lazarowicz.onlyhitus;
+package bo.umsa.deseo;
 
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.GridView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -12,10 +13,14 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import com.lazarowicz.onlyhitus.player.PlaybackStatus;
-import com.lazarowicz.onlyhitus.player.RadioManager;
-import com.lazarowicz.onlyhitus.util.StationAdapter;
-import com.lazarowicz.onlyhitus.util.StationInstancer;
+
+
+import bo.umsa.deseo.player.PlaybackStatus;
+import bo.umsa.deseo.player.RadioManager;
+import bo.umsa.deseo.util.StationAdapter;
+import bo.umsa.deseo.util.StationInstancer;
+
+import bo.umsa.deseo.R;
 import com.squareup.picasso.Picasso;
 
 import org.greenrobot.eventbus.EventBus;
@@ -51,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.sub_player)
     View subPlayer;
 
+    @BindView(R.id.min)
+    TextView min;
     RadioManager radioManager;
 
     @Override
@@ -71,6 +78,15 @@ public class MainActivity extends AppCompatActivity {
         StationAdapter adapter = new StationAdapter(this, list);
         listView.setAdapter(adapter);
         listView.setAdapter(new StationAdapter(this, list));
+        GridView gView= findViewById(R.id.progra);
+        min.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                moveTaskToBack(true);
+            }
+        });
+
+
     }
 
     @NotNull
@@ -78,29 +94,12 @@ public class MainActivity extends AppCompatActivity {
         ArrayList<StationInstancer> list = new ArrayList<>();
 
         StationInstancer onlyHitStationInstancer = new StationInstancer();
-        onlyHitStationInstancer.setName("OnlyHit");
-        onlyHitStationInstancer.setUrl("https://api.onlyhit.us");
-        onlyHitStationInstancer.setImage(R.drawable.onlyhit);
+        onlyHitStationInstancer.setName("Reproducir");
+        onlyHitStationInstancer.setUrl("https://conectperu.com/8396/stream");
+        onlyHitStationInstancer.setImage(R.drawable.radiod);
         list.add(onlyHitStationInstancer);
-
-        StationInstancer onlyHitGoldStationInstancer = new StationInstancer();
-        onlyHitGoldStationInstancer.setName("OnlyHit Gold");
-        onlyHitGoldStationInstancer.setUrl("https://gold.onlyhit.us");
-        onlyHitGoldStationInstancer.setImage(R.drawable.onlyhit_gold);
-        list.add(onlyHitGoldStationInstancer);
-
-        StationInstancer onlyHitJapanStationInstancer = new StationInstancer();
-        onlyHitJapanStationInstancer.setName("OnlyHit Japan");
-        onlyHitJapanStationInstancer.setUrl("https://j.onlyhit.us");
-        onlyHitJapanStationInstancer.setImage(R.drawable.onlyhit_japan);
-        list.add(onlyHitJapanStationInstancer);
-
-        StationInstancer onlyHitKPopStationInstancer = new StationInstancer();
-        onlyHitKPopStationInstancer.setName("OnlyHit K-Pop");
-        onlyHitKPopStationInstancer.setUrl("https://kpop.onlyhit.us");
-        onlyHitKPopStationInstancer.setImage(R.drawable.onlyhitkpop);
-        list.add(onlyHitKPopStationInstancer);
         return list;
+
     }
 
     @Override
@@ -179,12 +178,16 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        stationName.setText(shoutcast.getName());
+        stationName.setText("Radio Deseo");
         Picasso.get().load(shoutcast.getImage()).into(stationLogo);
 
         subPlayer.setVisibility(View.VISIBLE);
 
         radioManager.passShoutcast(shoutcast);
         radioManager.playOrPause();
+
+        listView.setVisibility(View.INVISIBLE);
+
+
     }
 }
