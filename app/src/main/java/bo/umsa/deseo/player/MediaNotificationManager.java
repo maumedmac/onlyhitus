@@ -79,7 +79,7 @@ public class MediaNotificationManager extends MainActivity {
                 .setLargeIcon(largeIcon)
                 .setContentIntent(pendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.radiod)
                 .addAction(icon, "pause", action)
 
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
