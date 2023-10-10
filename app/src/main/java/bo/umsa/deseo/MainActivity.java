@@ -7,6 +7,7 @@ import android.widget.GridView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.NumberPicker;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -58,6 +59,9 @@ public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.min)
     TextView min;
+
+    @BindView(R.id.number)
+    NumberPicker numberPicker;
     RadioManager radioManager;
 
     @Override
@@ -85,6 +89,10 @@ public class MainActivity extends AppCompatActivity {
                 moveTaskToBack(true);
             }
         });
+
+        numberPicker.setMinValue(0);
+        numberPicker.setMaxValue(100);
+        numberPicker.setValue(49);
 
 
     }
