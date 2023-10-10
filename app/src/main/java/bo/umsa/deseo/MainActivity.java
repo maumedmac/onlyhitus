@@ -7,6 +7,7 @@ import android.widget.GridView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.NumberPicker;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,6 +18,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import bo.umsa.deseo.player.PlaybackStatus;
 import bo.umsa.deseo.player.RadioManager;
+import bo.umsa.deseo.util.Show;
 import bo.umsa.deseo.util.StationAdapter;
 import bo.umsa.deseo.util.StationInstancer;
 
@@ -58,6 +60,9 @@ public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.min)
     TextView min;
+
+    @BindView(R.id.number)
+    NumberPicker numberPicker;
     RadioManager radioManager;
 
     @Override
@@ -85,6 +90,14 @@ public class MainActivity extends AppCompatActivity {
                 moveTaskToBack(true);
             }
         });
+
+        Show.initShow();
+
+
+        numberPicker.setMinValue(0);
+        numberPicker.setMaxValue(Show.getShowArrayList().size()-1);
+        numberPicker.setDisplayedValues(Show.showNames());
+
 
 
     }
