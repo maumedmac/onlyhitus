@@ -46,8 +46,7 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.playTrigger)
     ImageButton trigger;
 
-    @BindView(R.id.listview)
-    ListView listView;
+
 
     @BindView(R.id.stationName)
     TextView stationName;
@@ -78,12 +77,8 @@ public class MainActivity extends AppCompatActivity {
 
         radioManager = RadioManager.with(this);
 
-        ArrayList<StationInstancer> list = loadStations();
 
-        StationAdapter adapter = new StationAdapter(this, list);
-        listView.setAdapter(adapter);
-        listView.setAdapter(new StationAdapter(this, list));
-        GridView gView= findViewById(R.id.progra);
+
         min.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -92,6 +87,24 @@ public class MainActivity extends AppCompatActivity {
         });
 
         Show.initShow();
+
+
+
+
+        StationInstancer shoutcast = new StationInstancer();
+        shoutcast.setName("Reproducir");
+        shoutcast.setUrl("https://conectperu.com/8390/stream");
+        shoutcast.setImage(R.drawable.radiod);
+
+        stationName.setText("Radio Deseo");
+        Picasso.get().load(shoutcast.getImage()).into(stationLogo);
+
+        subPlayer.setVisibility(View.VISIBLE);
+
+        radioManager.passShoutcast(shoutcast);
+       // radioManager.playOrPause();
+
+
 
 
         numberPicker.setMinValue(0);
@@ -182,25 +195,5 @@ public class MainActivity extends AppCompatActivity {
         radioManager.playOrPause();
     }
 
-    @OnItemClick(R.id.listview)
-    public void onItemClick(AdapterView<?> parent, View view, int position) {
 
-        StationInstancer shoutcast = (StationInstancer) parent.getItemAtPosition(position);
-        if (shoutcast == null || stationName.getText() == shoutcast.getName() ||
-                RadioManager.getStatus().equals(PlaybackStatus.LOADING)) {
-            return;
-        }
-
-        stationName.setText("Radio Deseo");
-        Picasso.get().load(shoutcast.getImage()).into(stationLogo);
-
-        subPlayer.setVisibility(View.VISIBLE);
-
-        radioManager.passShoutcast(shoutcast);
-        radioManager.playOrPause();
-
-        listView.setVisibility(View.INVISIBLE);
-
-
-    }
 }

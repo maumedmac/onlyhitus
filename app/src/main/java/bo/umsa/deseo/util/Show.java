@@ -2,6 +2,7 @@ package bo.umsa.deseo.util;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 
 public class Show {
 
@@ -9,6 +10,7 @@ public class Show {
     private static ArrayList<Show> ShowArrayList;
 
     private int id;
+
     private String name;
 
     public Show(int id, String name) {
@@ -21,8 +23,10 @@ public class Show {
     {
         ShowArrayList = new ArrayList<>();
         Calendar c = Calendar.getInstance();
+        Date d = new Date();
         //c.set(año,mes,dia) // vairables int
         int dia =  c.get(Calendar.DAY_OF_WEEK);
+
         if(dia==Calendar.SUNDAY){
             ShowArrayList.add(new Show(0,"07:00 – Música"));
             ShowArrayList.add(new Show(1,"07:30 – Novilunio"));
@@ -155,6 +159,9 @@ public class Show {
         }
         return names;
     }
+
+
+
     public int getId() {
         return id;
     }

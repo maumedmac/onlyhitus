@@ -11,25 +11,15 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="bottom"
         android:orientation="vertical">
 
-        <ListView
-            android:id="@+id/listview"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
 
-        <GridView
-            android:id="@+id/progra"
-            android:layout_width="fill_parent"
-            android:layout_height="0dp"
-            android:layout_weight="4"
-            android:clipToPadding="false"
-            android:horizontalSpacing="8dp"
-            android:padding="8dp"
-            android:scrollbarStyle="outsideOverlay"
-            android:stretchMode="columnWidth"
-            android:verticalSpacing="8dp" />
+        <NumberPicker
+            android:id="@+id/number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
 
         <RelativeLayout
             android:id="@+id/sub_player"
@@ -37,7 +27,7 @@
             android:layout_height="60dp"
             android:background="@android:color/white"
             android:orientation="horizontal"
-            android:visibility="invisible">
+            android:visibility="visible">
 
             <ImageButton
                 android:id="@+id/stationLogo"
